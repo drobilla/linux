@@ -258,7 +258,7 @@ static const u8 IT87_REG_FANX_MIN_8665[] = {
 	0x1b, 0x1c, 0x1d, 0x85, 0x87, 0xb3
 };
 
-static const u8 IT87_REG_TEMP_OFFSET[] = { 0x56, 0x57, 0x59 };
+static const u8 IT87_REG_TEMP_OFFSET[] = { 0x56, 0x57, 0x59, 0x5a, 0x91, 0x90 };
 
 #define IT87_REG_FAN_MAIN_CTRL 0x13
 #define IT87_REG_FAN_CTL       0x14
@@ -275,8 +275,9 @@ static const u8 IT87_REG_VIN[]	= { 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26,
 
 #define IT87_REG_VIN_MAX(nr)   (0x30 + (nr) * 2)
 #define IT87_REG_VIN_MIN(nr)   (0x31 + (nr) * 2)
-#define IT87_REG_TEMP_HIGH(nr) (0x40 + (nr) * 2)
-#define IT87_REG_TEMP_LOW(nr)  (0x41 + (nr) * 2)
+
+static const u8 IT87_REG_TEMP_HIGH[] =	{ 0x40, 0x42, 0x44, 0x46, 0xb4, 0xb6 };
+static const u8 IT87_REG_TEMP_LOW[] =	{ 0x41, 0x43, 0x45, 0x47, 0xb5, 0xb7 };
 
 #define IT87_REG_VIN_ENABLE    0x50
 #define IT87_REG_TEMP_ENABLE   0x51
@@ -295,8 +296,6 @@ static const u8 IT87_REG_AUTO_BASE[] = { 0x60, 0x68, 0x70, 0x78, 0xa0, 0xa8 };
 #define NUM_VIN			ARRAY_SIZE(IT87_REG_VIN)
 #define NUM_VIN_LIMIT		8
 #define NUM_TEMP		6
-#define NUM_TEMP_OFFSET		ARRAY_SIZE(IT87_REG_TEMP_OFFSET)
-#define NUM_TEMP_LIMIT		3
 #define NUM_FAN			ARRAY_SIZE(IT87_REG_FAN)
 #define NUM_FAN_DIV		3
 #define NUM_PWM			ARRAY_SIZE(IT87_REG_PWM)
@@ -306,6 +305,7 @@ struct it87_devices {
 	const char *name;
 	const char * const suffix;
 	u32 features;
+	u8 num_temp_limit;
 	u8 peci_mask;
 	u8 old_peci_mask;
 };
@@ -341,12 +341,14 @@ static const struct it87_devices it87_devices[] = {
 		.suffix = "F",
 		.features = FEAT_OLD_AUTOPWM | FEAT_FANCTL_ONOFF,
 						/* may need to overwrite */
+		.num_temp_limit = 3,
 	},
 	[it8712] = {
 		.name = "it8712",
 		.suffix = "F",
 		.features = FEAT_OLD_AUTOPWM | FEAT_VID | FEAT_FANCTL_ONOFF,
 						/* may need to overwrite */
+		.num_temp_limit = 3,
 	},
 	[it8716] = {
 		.name = "it8716",
@@ -354,6 +356,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_16BIT_FANS | FEAT_TEMP_OFFSET | FEAT_VID
 		  | FEAT_FAN16_CONFIG | FEAT_FIVE_FANS | FEAT_PWM_FREQ2
 		  | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 	},
 	[it8718] = {
 		.name = "it8718",
@@ -361,6 +364,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_16BIT_FANS | FEAT_TEMP_OFFSET | FEAT_VID
 		  | FEAT_TEMP_OLD_PECI | FEAT_FAN16_CONFIG | FEAT_FIVE_FANS
 		  | FEAT_PWM_FREQ2 | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.old_peci_mask = 0x4,
 	},
 	[it8720] = {
@@ -369,6 +373,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_16BIT_FANS | FEAT_TEMP_OFFSET | FEAT_VID
 		  | FEAT_TEMP_OLD_PECI | FEAT_FAN16_CONFIG | FEAT_FIVE_FANS
 		  | FEAT_PWM_FREQ2 | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.old_peci_mask = 0x4,
 	},
 	[it8721] = {
@@ -378,6 +383,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_OLD_PECI | FEAT_TEMP_PECI
 		  | FEAT_FAN16_CONFIG | FEAT_FIVE_FANS | FEAT_IN7_INTERNAL
 		  | FEAT_PWM_FREQ2 | FEAT_SCALING | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x05,
 		.old_peci_mask = 0x02,	/* Actually reports PCH */
 	},
@@ -388,6 +394,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_FIVE_FANS
 		  | FEAT_IN7_INTERNAL | FEAT_PWM_FREQ2 | FEAT_SCALING
 		  | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8732] = {
@@ -397,6 +404,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_OLD_PECI | FEAT_TEMP_PECI
 		  | FEAT_10_9MV_ADC | FEAT_IN7_INTERNAL | FEAT_FOUR_FANS
 		  | FEAT_FOUR_PWM | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 		.old_peci_mask = 0x02,	/* Actually reports PCH */
 	},
@@ -410,6 +418,7 @@ static const struct it87_devices it87_devices[] = {
 				/* 12mV ADC (OHM) */
 				/* 16 bit fans (OHM) */
 				/* three fans, always 16 bit (guesswork) */
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8772] = {
@@ -422,6 +431,7 @@ static const struct it87_devices it87_devices[] = {
 				/* 12mV ADC (HWSensors4, OHM) */
 				/* 16 bit fans (HWSensors4, OHM) */
 				/* three fans, always 16 bit (datasheet) */
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8781] = {
@@ -430,6 +440,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_16BIT_FANS | FEAT_TEMP_OFFSET
 		  | FEAT_TEMP_OLD_PECI | FEAT_FAN16_CONFIG | FEAT_PWM_FREQ2
 		  | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.old_peci_mask = 0x4,
 	},
 	[it8782] = {
@@ -438,6 +449,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_16BIT_FANS | FEAT_TEMP_OFFSET
 		  | FEAT_TEMP_OLD_PECI | FEAT_FAN16_CONFIG | FEAT_PWM_FREQ2
 		  | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.old_peci_mask = 0x4,
 	},
 	[it8783] = {
@@ -446,6 +458,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_16BIT_FANS | FEAT_TEMP_OFFSET
 		  | FEAT_TEMP_OLD_PECI | FEAT_FAN16_CONFIG | FEAT_PWM_FREQ2
 		  | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.old_peci_mask = 0x4,
 	},
 	[it8786] = {
@@ -454,6 +467,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_NEWER_AUTOPWM | FEAT_12MV_ADC | FEAT_16BIT_FANS
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_IN7_INTERNAL
 		  | FEAT_PWM_FREQ2 | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8790] = {
@@ -462,6 +476,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_NEWER_AUTOPWM | FEAT_10_9MV_ADC | FEAT_SCALING
 		  | FEAT_16BIT_FANS | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI
 		  | FEAT_IN7_INTERNAL | FEAT_PWM_FREQ2 | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8792] = {
@@ -470,6 +485,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_NEWER_AUTOPWM | FEAT_10_9MV_ADC | FEAT_SCALING
 		  | FEAT_16BIT_FANS | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI
 		  | FEAT_IN7_INTERNAL | FEAT_PWM_FREQ2 | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8603] = {
@@ -478,6 +494,7 @@ static const struct it87_devices it87_devices[] = {
 		.features = FEAT_NEWER_AUTOPWM | FEAT_12MV_ADC | FEAT_16BIT_FANS
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_IN7_INTERNAL
 		  | FEAT_AVCC3 | FEAT_PWM_FREQ2 | FEAT_SCALING,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8607] = {
@@ -487,6 +504,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_IN7_INTERNAL
 		  | FEAT_AVCC3 | FEAT_PWM_FREQ2 | FEAT_SCALING
 		  | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8620] = {
@@ -497,6 +515,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_IN7_INTERNAL | FEAT_SIX_PWM | FEAT_PWM_FREQ2
 		  | FEAT_SIX_TEMP | FEAT_VIN3_5V | FEAT_SCALING
 		  | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8622] = {
@@ -506,6 +525,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_FIVE_FANS
 		  | FEAT_FIVE_PWM | FEAT_IN7_INTERNAL | FEAT_PWM_FREQ2
 		  | FEAT_AVCC3 | FEAT_VIN3_5V | FEAT_SCALING,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8628] = {
@@ -516,6 +536,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_IN7_INTERNAL | FEAT_SIX_PWM | FEAT_PWM_FREQ2
 		  | FEAT_SIX_TEMP | FEAT_VIN3_5V | FEAT_SCALING | FEAT_AVCC3
 		  | FEAT_FANCTL_ONOFF,
+		.num_temp_limit = 3,
 		.peci_mask = 0x07,
 	},
 	[it8655] = {
@@ -525,6 +546,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI
 		  | FEAT_10_9MV_ADC | FEAT_IN7_INTERNAL | FEAT_BANK_SEL
 		  | FEAT_SCALING | FEAT_AVCC3,
+		.num_temp_limit = 6,
 		.peci_mask = 0x07,
 	},
 	[it8665] = {
@@ -534,6 +556,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_AVCC3
 		  | FEAT_10_9MV_ADC | FEAT_IN7_INTERNAL | FEAT_SIX_FANS
 		  | FEAT_SIX_PWM | FEAT_BANK_SEL | FEAT_SCALING,
+		.num_temp_limit = 6,
 		.peci_mask = 0x07,
 	},
 	[it8686] = {
@@ -543,6 +566,7 @@ static const struct it87_devices it87_devices[] = {
 		  | FEAT_TEMP_OFFSET | FEAT_TEMP_PECI | FEAT_SIX_FANS
 		  | FEAT_IN7_INTERNAL | FEAT_SIX_PWM | FEAT_PWM_FREQ2
 		  | FEAT_SIX_TEMP | FEAT_BANK_SEL | FEAT_SCALING | FEAT_AVCC3,
+		.num_temp_limit = 6,
 		.peci_mask = 0x07,
 	},
 };
@@ -633,6 +657,7 @@ struct it87_data {
 	u16 fan[NUM_FAN][2];	/* Register values, [nr][0]=fan, [1]=min */
 	u8 has_temp;		/* Bitfield, temp sensors enabled */
 	s8 temp[NUM_TEMP][4];	/* [nr][0]=temp, [1]=min, [2]=max, [3]=offset */
+	u8 num_temp_limit;	/* Number of temp limit/offset registers */
 	u8 sensor;		/* Register value (IT87_REG_TEMP_ENABLE) */
 	u8 extra;		/* Register value (IT87_REG_TEMP_EXTRA) */
 	u8 fan_div[NUM_FAN_DIV];/* Register encoding, shifted right */
@@ -917,18 +942,18 @@ static struct it87_data *it87_update_device(struct device *dev)
 			data->temp[i][0] =
 				it87_read_value(data, IT87_REG_TEMP(i));
 
-			if (has_temp_offset(data) && i < NUM_TEMP_OFFSET)
+			if (i >= data->num_temp_limit)
+				continue;
+
+			if (has_temp_offset(data))
 				data->temp[i][3] =
 				  it87_read_value(data,
 						  IT87_REG_TEMP_OFFSET[i]);
 
-			if (i >= NUM_TEMP_LIMIT)
-				continue;
-
 			data->temp[i][1] =
-				it87_read_value(data, IT87_REG_TEMP_LOW(i));
+				it87_read_value(data, IT87_REG_TEMP_LOW[i]);
 			data->temp[i][2] =
-				it87_read_value(data, IT87_REG_TEMP_HIGH(i));
+				it87_read_value(data, IT87_REG_TEMP_HIGH[i]);
 		}
 
 		/* Newer chips don't have clock dividers */
@@ -1079,10 +1104,10 @@ static ssize_t set_temp(struct device *dev, struct device_attribute *attr,
 	switch (index) {
 	default:
 	case 1:
-		reg = IT87_REG_TEMP_LOW(nr);
+		reg = IT87_REG_TEMP_LOW[nr];
 		break;
 	case 2:
-		reg = IT87_REG_TEMP_HIGH(nr);
+		reg = IT87_REG_TEMP_HIGH[nr];
 		break;
 	case 3:
 		regval = it87_read_value(data, IT87_REG_BEEP_ENABLE);
@@ -1123,8 +1148,17 @@ static SENSOR_DEVICE_ATTR_2(temp3_max, 0644, show_temp, set_temp,
 static SENSOR_DEVICE_ATTR_2(temp3_offset, 0644, show_temp,
 			    set_temp, 2, 3);
 static SENSOR_DEVICE_ATTR_2(temp4_input, 0444, show_temp, NULL, 3, 0);
+static SENSOR_DEVICE_ATTR_2(temp4_min, 0644, show_temp, set_temp, 3, 1);
+static SENSOR_DEVICE_ATTR_2(temp4_max, 0644, show_temp, set_temp, 3, 2);
+static SENSOR_DEVICE_ATTR_2(temp4_offset, 0644, show_temp, set_temp, 3, 3);
 static SENSOR_DEVICE_ATTR_2(temp5_input, 0444, show_temp, NULL, 4, 0);
+static SENSOR_DEVICE_ATTR_2(temp5_min, 0644, show_temp, set_temp, 4, 1);
+static SENSOR_DEVICE_ATTR_2(temp5_max, 0644, show_temp, set_temp, 4, 2);
+static SENSOR_DEVICE_ATTR_2(temp5_offset, 0644, show_temp, set_temp, 4, 3);
 static SENSOR_DEVICE_ATTR_2(temp6_input, 0444, show_temp, NULL, 5, 0);
+static SENSOR_DEVICE_ATTR_2(temp6_min, 0644, show_temp, set_temp, 5, 1);
+static SENSOR_DEVICE_ATTR_2(temp6_max, 0644, show_temp, set_temp, 5, 2);
+static SENSOR_DEVICE_ATTR_2(temp6_offset, 0644, show_temp, set_temp, 5, 3);
 
 static ssize_t show_temp_type(struct device *dev, struct device_attribute *attr,
 			      char *buf)
@@ -1194,12 +1228,12 @@ static ssize_t set_temp_type(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static SENSOR_DEVICE_ATTR(temp1_type, 0644, show_temp_type,
-			  set_temp_type, 0);
-static SENSOR_DEVICE_ATTR(temp2_type, 0644, show_temp_type,
-			  set_temp_type, 1);
-static SENSOR_DEVICE_ATTR(temp3_type, 0644, show_temp_type,
-			  set_temp_type, 2);
+static SENSOR_DEVICE_ATTR(temp1_type, 0644, show_temp_type, set_temp_type, 0);
+static SENSOR_DEVICE_ATTR(temp2_type, 0644, show_temp_type, set_temp_type, 1);
+static SENSOR_DEVICE_ATTR(temp3_type, 0644, show_temp_type, set_temp_type, 2);
+static SENSOR_DEVICE_ATTR(temp4_type, 0644, show_temp_type, set_temp_type, 3);
+static SENSOR_DEVICE_ATTR(temp5_type, 0644, show_temp_type, set_temp_type, 4);
+static SENSOR_DEVICE_ATTR(temp6_type, 0644, show_temp_type, set_temp_type, 5);
 
 /* 6 Fans */
 
@@ -1959,8 +1993,10 @@ static SENSOR_DEVICE_ATTR(fan6_alarm, 0444, show_alarm, NULL, 7);
 static SENSOR_DEVICE_ATTR(temp1_alarm, 0444, show_alarm, NULL, 16);
 static SENSOR_DEVICE_ATTR(temp2_alarm, 0444, show_alarm, NULL, 17);
 static SENSOR_DEVICE_ATTR(temp3_alarm, 0444, show_alarm, NULL, 18);
-static SENSOR_DEVICE_ATTR(intrusion0_alarm, 0644,
-			  show_alarm, clear_intrusion, 4);
+static SENSOR_DEVICE_ATTR(temp4_alarm, 0444, show_alarm, NULL, 19);
+static SENSOR_DEVICE_ATTR(temp5_alarm, 0444, show_alarm, NULL, 20);
+static SENSOR_DEVICE_ATTR(temp6_alarm, 0444, show_alarm, NULL, 21);
+static SENSOR_DEVICE_ATTR(intrusion0_alarm, 0644, show_alarm, clear_intrusion, 4);
 
 static ssize_t show_beep(struct device *dev, struct device_attribute *attr,
 			 char *buf)
@@ -2010,6 +2046,9 @@ static SENSOR_DEVICE_ATTR(fan6_beep, 0444, show_beep, set_beep, 0);
 static SENSOR_DEVICE_ATTR(temp1_beep, 0644, show_beep, set_beep, 2);
 static SENSOR_DEVICE_ATTR(temp2_beep, 0444, show_beep, NULL, 2);
 static SENSOR_DEVICE_ATTR(temp3_beep, 0444, show_beep, NULL, 2);
+static SENSOR_DEVICE_ATTR(temp4_beep, 0444, show_beep, NULL, 2);
+static SENSOR_DEVICE_ATTR(temp5_beep, 0444, show_beep, NULL, 2);
+static SENSOR_DEVICE_ATTR(temp6_beep, 0444, show_beep, NULL, 2);
 
 static ssize_t vrm_show(struct device *dev, struct device_attribute *attr,
 			char *buf)
@@ -2169,12 +2208,10 @@ static umode_t it87_temp_is_visible(struct kobject *kobj,
 	int i = index / 7;	/* temperature index */
 	int a = index % 7;	/* attribute index */
 
-	if (index >= 21) {
-		i = index - 21 + 3;
-		a = 0;
-	}
-
 	if (!(data->has_temp & BIT(i)))
+		return 0;
+
+	if (a && i >= data->num_temp_limit)
 		return 0;
 
 	if (a == 5 && !has_temp_offset(data))
@@ -2212,8 +2249,26 @@ static struct attribute *it87_attributes_temp[] = {
 	&sensor_dev_attr_temp3_beep.dev_attr.attr,
 
 	&sensor_dev_attr_temp4_input.dev_attr.attr,	/* 21 */
+	&sensor_dev_attr_temp4_max.dev_attr.attr,
+	&sensor_dev_attr_temp4_min.dev_attr.attr,
+	&sensor_dev_attr_temp4_type.dev_attr.attr,
+	&sensor_dev_attr_temp4_alarm.dev_attr.attr,
+	&sensor_dev_attr_temp4_offset.dev_attr.attr,
+	&sensor_dev_attr_temp4_beep.dev_attr.attr,
 	&sensor_dev_attr_temp5_input.dev_attr.attr,
+	&sensor_dev_attr_temp5_max.dev_attr.attr,
+	&sensor_dev_attr_temp5_min.dev_attr.attr,
+	&sensor_dev_attr_temp5_type.dev_attr.attr,
+	&sensor_dev_attr_temp5_alarm.dev_attr.attr,
+	&sensor_dev_attr_temp5_offset.dev_attr.attr,
+	&sensor_dev_attr_temp5_beep.dev_attr.attr,
 	&sensor_dev_attr_temp6_input.dev_attr.attr,
+	&sensor_dev_attr_temp6_max.dev_attr.attr,
+	&sensor_dev_attr_temp6_min.dev_attr.attr,
+	&sensor_dev_attr_temp6_type.dev_attr.attr,
+	&sensor_dev_attr_temp6_alarm.dev_attr.attr,
+	&sensor_dev_attr_temp6_offset.dev_attr.attr,
+	&sensor_dev_attr_temp6_beep.dev_attr.attr,
 	NULL
 };
 
@@ -3061,10 +3116,10 @@ static void it87_check_limit_regs(struct it87_data *data)
 		if (reg == 0xff)
 			it87_write_value(data, IT87_REG_VIN_MIN(i), 0);
 	}
-	for (i = 0; i < NUM_TEMP_LIMIT; i++) {
-		reg = it87_read_value(data, IT87_REG_TEMP_HIGH(i));
+	for (i = 0; i < data->num_temp_limit; i++) {
+		reg = it87_read_value(data, IT87_REG_TEMP_HIGH[i]);
 		if (reg == 0xff)
-			it87_write_value(data, IT87_REG_TEMP_HIGH(i), 127);
+			it87_write_value(data, IT87_REG_TEMP_HIGH[i], 127);
 	}
 }
 
@@ -3319,6 +3374,7 @@ static int it87_probe(struct platform_device *pdev)
 	data->sioaddr = sio_data->sioaddr;
 	data->type = sio_data->type;
 	data->features = it87_devices[sio_data->type].features;
+	data->num_temp_limit = it87_devices[sio_data->type].num_temp_limit;
 	data->peci_mask = it87_devices[sio_data->type].peci_mask;
 	data->old_peci_mask = it87_devices[sio_data->type].old_peci_mask;
 	data->bank = 0xff;
